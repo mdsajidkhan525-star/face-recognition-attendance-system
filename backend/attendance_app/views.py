@@ -1877,6 +1877,10 @@ def face_register_api(request):
             "Face registration processing..."
         )
 
+        # =====================================================
+        # GENERATE FACE EMBEDDING
+        # =====================================================
+
         result = DeepFace.represent(
             img_path=frame,
             model_name="Facenet512",
@@ -1886,27 +1890,120 @@ def face_register_api(request):
 
         embedding = result[0]["embedding"]
 
+        # =====================================================
+        # DATASET DIRECTORY
+        # =====================================================
+
+        dataset_dir = os.path.join(
+            BASE_DIR,
+            "dataset",
+            str(student_id)
+        )
+
+        os.makedirs(
+            dataset_dir,
+            exist_ok=True
+        )
+
+        # =====================================================
+        # START NEW REGISTRATION SESSION
+        # =====================================================
+
         if image_index == "1":
 
+            # Remove previous dataset images
+            for filename in os.listdir(
+                dataset_dir
+            ):
+
+                file_path = os.path.join(
+                    dataset_dir,
+                    filename
+                )
+
+                if os.path.isfile(
+                    file_path
+                ):
+
+                    if filename.lower().endswith(
+                        (
+                            ".jpg",
+                            ".jpeg",
+                            ".png"
+                        )
+                    ):
+
+                        os.remove(
+                            file_path
+                        )
+
+            # Remove previous face embeddings
             faces_collection.delete_many({
                 "student_id":
                     student_id
             })
 
+        # =====================================================
+        # IMAGE NUMBER
+        # =====================================================
+
+        image_number = (
+            int(image_index)
+            if image_index
+            else 1
+        )
+
+        # =====================================================
+        # SAVE IMAGE TO DATASET
+        # =====================================================
+
+        dataset_filename = (
+            f"face_{image_number:02d}.jpg"
+        )
+
+        dataset_path = os.path.join(
+            dataset_dir,
+            dataset_filename
+        )
+
+        saved = cv2.imwrite(
+            dataset_path,
+            frame
+        )
+
+        if not saved:
+
+            return json_error(
+                "Unable to save image to dataset",
+                500
+            )
+
+        print(
+            "Dataset image saved:",
+            dataset_path
+        )
+
+        # =====================================================
+        # SAVE FACE EMBEDDING TO MONGODB
+        # =====================================================
+
         face_record = {
+
             "student_id":
                 student_id,
+
             "student_name":
                 student.get(
                     "name",
                     ""
                 ),
+
             "image_index":
-                int(image_index)
-                if image_index
-                else None,
+                image_number,
+
             "embedding":
                 embedding,
+
             "created_at":
                 datetime.now(
                     ZoneInfo("Asia/Kolkata")
@@ -1917,12 +2014,44 @@ def face_register_api(request):
             face_record
         )
 
+        # =====================================================
+        # COUNT FACE EMBEDDINGS
+        # =====================================================
+
         total_faces = (
             faces_collection.count_documents({
                 "student_id":
                     student_id
             })
         )
+
+        # =====================================================
+        # COUNT DATASET IMAGES
+        # =====================================================
+
+        dataset_images = 0
+
+        if os.path.exists(
+            dataset_dir
+        ):
+
+            dataset_images = len([
+                filename
+                for filename in os.listdir(
+                    dataset_dir
+                )
+                if filename.lower().endswith(
+                    (
+                        ".jpg",
+                        ".jpeg",
+                        ".png"
+                    )
+                )
+            ])
+
+        # =====================================================
+        # LOG INFORMATION
+        # =====================================================
 
         print(
             "Face registered:",
@@ -1933,33 +2062,55 @@ def face_register_api(request):
         )
 
         print(
-            "Image index:",
-            image_index
+            "Student ID:",
+            student_id
         )
 
         print(
-            "Total faces:",
+            "Image index:",
+            image_number
+        )
+
+        print(
+            "Total face embeddings:",
             total_faces
         )
 
+        print(
+            "Total dataset images:",
+            dataset_images
+        )
+
+        # =====================================================
+        # RESPONSE
+        # =====================================================
+
         return JsonResponse({
+
             "status":
                 "success",
+
             "message":
                 "Face registered successfully",
+
             "student_id":
                 student_id,
+
             "student_name":
                 student.get(
                     "name",
                     ""
                 ),
+
             "image_index":
-                int(image_index)
-                if image_index
-                else None,
+                image_number,
+
             "total_faces":
-                total_faces
+                total_faces,
+
+            "dataset_images":
+                dataset_images
+
         }, status=201)
 
     except Exception as e:

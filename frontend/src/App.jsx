@@ -513,6 +513,58 @@ const handleLogout = async () => {
     }
   };
 
+  const downloadAttendanceCSV = () => {
+    if (!attendance || attendance.length === 0) {
+      alert("No attendance records available to download.");
+      return;
+    }
+
+    const headers = [
+      "Student ID",
+      "Student Name",
+      "Similarity",
+      "Date",
+      "Time",
+      "Status",
+    ];
+
+    const escapeCSV = (value) => {
+      const text = String(value ?? "");
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+
+    const rows = attendance.map((record) => [
+      record.student_id || "",
+      record.student_name || "",
+      record.similarity !== undefined
+        ? Number(record.similarity).toFixed(4)
+        : "",
+      record.date || "",
+      record.time || "",
+      record.status || "PRESENT",
+    ]);
+
+    const csvContent = [
+      headers.map(escapeCSV).join(","),
+      ...rows.map((row) => row.map(escapeCSV).join(",")),
+    ].join("\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+
+    link.href = url;
+    link.download = `attendance_records_${date}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const loadAttendance = async () => {
     try {
       setLoadingAttendance(true);
@@ -2175,12 +2227,23 @@ if (studentPassword !== studentConfirmPassword) {
           </p>
         </div>
 
-        <button
-          className="secondary-btn"
-          onClick={loadAttendance}
-        >
-          Refresh
-        </button>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <button
+            className="secondary-btn"
+            onClick={downloadAttendanceCSV}
+            disabled={attendance.length === 0}
+            title="Download attendance records as CSV"
+          >
+            Download CSV
+          </button>
+
+          <button
+            className="secondary-btn"
+            onClick={loadAttendance}
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="panel">
@@ -3872,392 +3935,181 @@ case "face":
 
   if (!isAuthenticated) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "24px",
-          background:
-            "linear-gradient(135deg, #eef4ff 0%, #f7f9fc 50%, #eef7f5 100%)",
-          boxSizing: "border-box",
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "440px",
-            background: "#ffffff",
-            borderRadius: "24px",
-            padding: "40px",
-            boxShadow:
-              "0 24px 70px rgba(15,23,42,0.14)",
-            border:
-              "1px solid rgba(15,23,42,0.08)",
-            boxSizing: "border-box",
-          }}
-        >
-          <div
-            style={{
-              textAlign: "center",
-              marginBottom: "28px",
-            }}
-          >
-            <div
-              style={{
-                width: "70px",
-                height: "70px",
-                margin:
-                  "0 auto 18px",
-                borderRadius: "20px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background:
-                  "linear-gradient(135deg,#2563eb,#4f46e5)",
-                color: "#ffffff",
-                fontSize: "28px",
-                fontWeight: "800",
-              }}
-            >
-              F
-            </div>
-
-            <h1
-              style={{
-                margin:
-                  "0 0 8px",
-                fontSize: "28px",
-                color: "#111827",
-              }}
-            >
-              Face Attendance
-            </h1>
-
-            <p
-              style={{
-                margin: 0,
-                color: "#6b7280",
-                fontSize: "14px",
-              }}
-            >
-              Management System
-            </p>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "1fr 1fr",
-              gap: "8px",
-              marginBottom: "22px",
-              padding: "5px",
-              background:
-                "#f1f5f9",
-              borderRadius: "12px",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setLoginRole("admin");
-                setLoginError("");
-                setLoginUsername("");
-                setLoginPassword("");
-              }}
-              style={{
-                border: "none",
-                borderRadius: "9px",
-                padding: "11px",
-                cursor: "pointer",
-                fontWeight: "700",
-                background:
-                  loginRole === "admin"
-                    ? "#ffffff"
-                    : "transparent",
-                color:
-                  loginRole === "admin"
-                    ? "#2563eb"
-                    : "#64748b",
-                boxShadow:
-                  loginRole === "admin"
-                    ? "0 2px 8px rgba(15,23,42,0.08)"
-                    : "none",
-              }}
-            >
-              Admin
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setLoginRole("student");
-                setLoginError("");
-                setLoginUsername("");
-                setLoginPassword("");
-              }}
-              style={{
-                border: "none",
-                borderRadius: "9px",
-                padding: "11px",
-                cursor: "pointer",
-                fontWeight: "700",
-                background:
-                  loginRole === "student"
-                    ? "#ffffff"
-                    : "transparent",
-                color:
-                  loginRole === "student"
-                    ? "#2563eb"
-                    : "#64748b",
-                boxShadow:
-                  loginRole === "student"
-                    ? "0 2px 8px rgba(15,23,42,0.08)"
-                    : "none",
-              }}
-            >
-              Student
-            </button>
-          </div>
-
-          <div
-            style={{
-              marginBottom: "22px",
-              padding:
-                "14px 16px",
-              borderRadius: "14px",
-              background:
-                "#f8fafc",
-              border:
-                "1px solid #e5e7eb",
-            }}
-          >
-            <strong
-              style={{
-                display: "block",
-                color: "#111827",
-                marginBottom:
-                  "5px",
-              }}
-            >
-              {loginRole ===
-              "admin"
-                ? "Administrator Login"
-                : "Student Login"}
-            </strong>
-
-            <span
-              style={{
-                fontSize: "13px",
-                color: "#6b7280",
-              }}
-            >
-              {loginRole ===
-              "admin"
-                ? "Sign in to access the administration dashboard."
-                : "Sign in to access your student portal."}
-            </span>
-          </div>
-
-          <form
-            onSubmit={handleLogin}
-          >
-            <div
-              style={{
-                marginBottom:
-                  "18px",
-              }}
-            >
-              <label
-                style={{
-                  display:
-                    "block",
-                  marginBottom:
-                    "8px",
-                  fontSize:
-                    "14px",
-                  fontWeight:
-                    "600",
-                  color:
-                    "#374151",
-                }}
-              >
-                {loginRole ===
-                "admin"
-                  ? "Username"
-                  : "Student ID"}
-              </label>
-
-              <input
-                type="text"
-                value={
-                  loginUsername
-                }
-                onChange={(e) =>
-                  setLoginUsername(
-                    e.target.value
-                  )
-                }
-                placeholder={
-                  loginRole ===
-                  "admin"
-                    ? "Enter admin username"
-                    : "Enter student ID"
-                }
-                autoComplete="username"
-                style={{
-                  width:
-                    "100%",
-                  padding:
-                    "13px 14px",
-                  borderRadius:
-                    "12px",
-                  border:
-                    "1px solid #d1d5db",
-                  outline:
-                    "none",
-                  fontSize:
-                    "14px",
-                  boxSizing:
-                    "border-box",
-                }}
-              />
-            </div>
-
-            <div
-              style={{
-                marginBottom:
-                  "18px",
-              }}
-            >
-              <label
-                style={{
-                  display:
-                    "block",
-                  marginBottom:
-                    "8px",
-                  fontSize:
-                    "14px",
-                  fontWeight:
-                    "600",
-                  color:
-                    "#374151",
-                }}
-              >
-                Password
-              </label>
-
-              <input
-                type="password"
-                value={
-                  loginPassword
-                }
-                onChange={(e) =>
-                  setLoginPassword(
-                    e.target.value
-                  )
-                }
-                placeholder="Enter password"
-                autoComplete="current-password"
-                style={{
-                  width:
-                    "100%",
-                  padding:
-                    "13px 14px",
-                  borderRadius:
-                    "12px",
-                  border:
-                    "1px solid #d1d5db",
-                  outline:
-                    "none",
-                  fontSize:
-                    "14px",
-                  boxSizing:
-                    "border-box",
-                }}
-              />
-            </div>
-
-            {loginError && (
-              <div
-                style={{
-                  marginBottom:
-                    "18px",
-                  padding:
-                    "12px 14px",
-                  borderRadius:
-                    "12px",
-                  background:
-                    "#fef2f2",
-                  border:
-                    "1px solid #fecaca",
-                  color:
-                    "#b91c1c",
-                  fontSize:
-                    "13px",
-                }}
-              >
-                {loginError}
+      <div className="login-page">
+        <div className="login-shell">
+          <section className="login-visual">
+            <div className="login-visual-brand">
+              <div className="login-brand-icon">F</div>
+              <div>
+                <h2>Face Attendance</h2>
+                <span>Management System</span>
               </div>
-            )}
+            </div>
 
-            <button
-              type="submit"
-              disabled={
-                loginLoading
-              }
-              style={{
-                width:
-                  "100%",
-                border:
-                  "none",
-                borderRadius:
-                  "12px",
-                padding:
-                  "14px",
-                background:
-                  loginLoading
-                    ? "#93c5fd"
-                    : "linear-gradient(135deg,#2563eb,#4f46e5)",
-                color:
-                  "#ffffff",
-                fontSize:
-                  "15px",
-                fontWeight:
-                  "700",
-                cursor:
-                  loginLoading
-                    ? "not-allowed"
-                    : "pointer",
-              }}
-            >
-              {loginLoading
-                ? "Signing in..."
-                : "Sign In"}
-            </button>
-          </form>
+            <div className="login-hero-copy">
+              <span className="login-kicker">SMART ATTENDANCE</span>
+              <h1>
+                Smart Attendance
+                <br />
+                with <span>Face Recognition</span>
+              </h1>
+              <p>
+                A modern and secure system for automated attendance using
+                advanced face recognition technology.
+              </p>
+            </div>
 
-          <div
-            style={{
-              textAlign:
-                "center",
-              marginTop:
-                "24px",
-              paddingTop:
-                "20px",
-              borderTop:
-                "1px solid #e5e7eb",
-              color:
-                "#9ca3af",
-              fontSize:
-                "12px",
-            }}
-          >
-            Face Recognition
-            Attendance System v1.0
-          </div>
+            <div className="login-features">
+              <div className="login-feature">
+                <div className="login-feature-icon">⌁</div>
+                <div>
+                  <strong>Fast & Accurate</strong>
+                  <span>Recognition in seconds</span>
+                </div>
+              </div>
+              <div className="login-feature">
+                <div className="login-feature-icon">◇</div>
+                <div>
+                  <strong>Secure</strong>
+                  <span>Your data is protected</span>
+                </div>
+              </div>
+              <div className="login-feature">
+                <div className="login-feature-icon">▥</div>
+                <div>
+                  <strong>Easy to Use</strong>
+                  <span>Simple and user-friendly</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="login-hero-art" aria-hidden="true">
+              <img src="/ai-face-hero.png" alt="" />
+            </div>
+
+            <div className="login-tagline">
+              <span>Smarter Attendance</span>
+              <span>for a Better Tomorrow</span>
+            </div>
+          </section>
+
+          <section className="login-panel">
+            <div className="login-card">
+              <div className="login-security-badge">
+                <span>◈</span>
+                <div>
+                  <strong>Secure Access</strong>
+                  <small>Better Management</small>
+                </div>
+              </div>
+
+              <div className="login-card-header">
+                <div className="login-card-icon">F</div>
+                <h1>Face Attendance</h1>
+                <p>Management System</p>
+              </div>
+
+              <div className="login-role-switch">
+                <button
+                  type="button"
+                  className={loginRole === "admin" ? "active" : ""}
+                  onClick={() => {
+                    setLoginRole("admin");
+                    setLoginError("");
+                    setLoginUsername("");
+                    setLoginPassword("");
+                  }}
+                >
+                  <span>♙</span> Admin
+                </button>
+                <button
+                  type="button"
+                  className={loginRole === "student" ? "active" : ""}
+                  onClick={() => {
+                    setLoginRole("student");
+                    setLoginError("");
+                    setLoginUsername("");
+                    setLoginPassword("");
+                  }}
+                >
+                  <span>▣</span> Student
+                </button>
+              </div>
+
+              <div className="login-description">
+                <strong>
+                  {loginRole === "admin" ? "Administrator Login" : "Student Login"}
+                </strong>
+                <span>
+                  {loginRole === "admin"
+                    ? "Sign in to access the administration dashboard."
+                    : "Sign in to access your student portal."}
+                </span>
+              </div>
+
+              <form onSubmit={handleLogin} className="login-form">
+                <label>
+                  {loginRole === "admin" ? "Username" : "Student ID"}
+                  <div className="login-input-wrap">
+                    <span>●</span>
+                    <input
+                      type="text"
+                      value={loginUsername}
+                      onChange={(e) => setLoginUsername(e.target.value)}
+                      placeholder={
+                        loginRole === "admin"
+                          ? "Enter admin username"
+                          : "Enter student ID"
+                      }
+                      autoComplete="username"
+                    />
+                  </div>
+                </label>
+
+                <label>
+                  Password
+                  <div className="login-input-wrap">
+                    <span>◆</span>
+                    <input
+                      type="password"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      placeholder="Enter password"
+                      autoComplete="current-password"
+                    />
+                  </div>
+                </label>
+
+                {loginError && (
+                  <div className="login-error">{loginError}</div>
+                )}
+
+                <div className="login-options">
+                  <label className="remember-option">
+                    <input type="checkbox" defaultChecked />
+                    <span>Remember me</span>
+                  </label>
+                  <button type="button" className="login-link">
+                    Forgot password?
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  className="login-submit"
+                  disabled={loginLoading}
+                >
+                  <span>{loginLoading ? "Signing in..." : "Sign In"}</span>
+                  <span className="login-submit-arrow">→</span>
+                </button>
+              </form>
+
+              <div className="login-divider"><span>OR</span></div>
+              <p className="login-contact">
+                Don't have an account? <strong>Contact Admin</strong>
+              </p>
+            </div>
+          </section>
         </div>
       </div>
     );
