@@ -543,7 +543,7 @@ def students(request):
 
             if len(password) < 8:
                 return json_error(
-                    "Password must contain at least 8 characters",
+                    "Student password must contain at least 8 characters",
                     400
                 )
 
@@ -1703,19 +1703,9 @@ def face_recognition_api(request):
                 "similarity": 0
             })
 
-        student_id = match[
-            "student_id"
-        ]
-
-        student_name = match[
-            "student_name"
-        ]
-
-        similarity = round(
-            float(match["similarity"]),
-            4
-        )
-
+        student_id = str(match["student_id"])
+        student_name = str(match["student_name"])
+        similarity = round(float(match["similarity"]), 4)
         print(
             "Student:",
             student_name
@@ -1764,31 +1754,15 @@ def face_recognition_api(request):
         )
 
         return JsonResponse({
-            "status":
-                attendance_result.get(
-                    "status"
-                ),
-            "message":
-                attendance_result.get(
-                    "message"
-                ),
-            "student_id":
-                student_id,
-            "student_name":
-                student_name,
-            "similarity":
-                similarity,
-            "date":
-                attendance_result.get(
-                    "date"
-                ),
-            "time":
-                attendance_result.get(
-                    "time"
-                ),
-            "attendance":
-                attendance_result
-        })
+    "status": "SUCCESS",
+    "message": attendance_result.get("message"),
+    "student_id": student_id,
+    "student_name": student_name,
+    "similarity": similarity,
+    "date": attendance_result.get("date"),
+    "time": attendance_result.get("time"),
+    "attendance": attendance_result
+})
 
     except Exception as e:
 

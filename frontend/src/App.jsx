@@ -2372,8 +2372,8 @@ if (studentPassword !== studentConfirmPassword) {
 
   const renderFaceRecognition = () => {
     const isSuccess =
-      recognitionResult?.status ===
-      "success";
+  recognitionResult?.status ===
+  "SUCCESS";
 
     const isAlreadyMarked =
       recognitionResult?.status ===
