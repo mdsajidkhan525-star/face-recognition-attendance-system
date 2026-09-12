@@ -19,13 +19,20 @@ load_dotenv(BASE_DIR / ".env")
 # SECURITY
 # ============================================================
 
-SECRET_KEY = "django-insecure-s&1&zgb1r!*zn5vfkg2w)e5w@7xm1s58n^#il0u3_eb_&8c=5+"
+SECRET_KEY = os.getenv(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-development-only-key"
+)
 
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
 ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
+    host.strip()
+    for host in os.getenv(
+        "ALLOWED_HOSTS",
+        "127.0.0.1,localhost"
+    ).split(",")
+    if host.strip()
 ]
 
 
@@ -154,7 +161,8 @@ USE_TZ = True
 # STATIC FILES
 # ============================================================
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
 # ============================================================
