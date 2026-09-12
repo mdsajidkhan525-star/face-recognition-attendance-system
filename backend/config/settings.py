@@ -179,6 +179,7 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://face-recognition-attendance-system-1-vra6.onrender.com",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -191,6 +192,7 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://face-recognition-attendance-system-1-vra6.onrender.com",
 ]
 
 
