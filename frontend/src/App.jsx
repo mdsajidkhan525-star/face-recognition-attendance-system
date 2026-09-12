@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API_URL = "http://localhost:8000";
-const TOTAL_FACE_IMAGES = 20;
+const API_URL = "https://face-recognition-attendance-system-evfu.onrender.com";const TOTAL_FACE_IMAGES = 20;
 
 axios.defaults.withCredentials = true;
 
