@@ -19,13 +19,17 @@ load_dotenv(BASE_DIR / ".env")
 # SECURITY
 # ============================================================
 
-SECRET_KEY = "django-insecure-s&1&zgb1r!*zn5vfkg2w)e5w@7xm1s58n^#il0u3_eb_&8c=5+"
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
 ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
+    host.strip()
+    for host in os.getenv(
+        "ALLOWED_HOSTS",
+        "127.0.0.1,localhost"
+    ).split(",")
+    if host.strip()
 ]
 
 
@@ -155,7 +159,7 @@ USE_TZ = True
 # ============================================================
 
 STATIC_URL = "static/"
-
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # ============================================================
 # EMAIL
@@ -169,8 +173,12 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 # ============================================================
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    if origin.strip()
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -181,8 +189,12 @@ CORS_ALLOW_CREDENTIALS = True
 # ============================================================
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    origin.strip()
+    for origin in os.getenv(
+        "CSRF_TRUSTED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",")
+    if origin.strip()
 ]
 
 
@@ -200,8 +212,10 @@ SESSION_COOKIE_HTTPONLY = True
 
 SESSION_COOKIE_SAMESITE = "Lax"
 
-SESSION_COOKIE_SECURE = False
-
+SESSION_COOKIE_SECURE = os.getenv(
+    "SESSION_COOKIE_SECURE",
+    "False"
+).lower() == "true"
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 14
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
@@ -215,8 +229,10 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 CSRF_COOKIE_SAMESITE = "Lax"
 
-CSRF_COOKIE_SECURE = False
-
+CSRF_COOKIE_SECURE = os.getenv(
+    "CSRF_COOKIE_SECURE",
+    "False"
+).lower() == "true"
 
 # ============================================================
 # DEFAULT PRIMARY KEY
