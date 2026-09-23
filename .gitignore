@@ -10,3 +10,5 @@ node_modules/
 venv312_store_backup/
 backend/staticfiles/
 *.zip
+backend/config/settings_local_backup.py
+dataset/102/
