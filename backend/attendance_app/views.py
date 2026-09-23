@@ -3,6 +3,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth import update_session_auth_hash
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 import json
 import os
@@ -58,8 +60,19 @@ def no_cache_response(data, status=200):
 
 
 def get_current_user(request):
+    try:
+        authentication = JWTAuthentication().authenticate(request)
+
+        if authentication:
+            user, token = authentication
+            request.user = user
+            return user
+    except Exception:
+        pass
+
     if request.user.is_authenticated:
         return request.user
+
     return None
 
 
@@ -158,10 +171,25 @@ def admin_login(request):
         request.session.modified = True
         request.session.save()
 
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+
+        access_token = str(
+            refresh.access_token
+        )
+
+        refresh_token = str(
+            refresh
+        )
+
         return no_cache_response({
             "status": "success",
             "message": "Login successful",
             "role": "admin",
+
+            "access": access_token,
+            "refresh": refresh_token,
+
             "user": {
                 "username": user.username,
                 "email": user.email,
@@ -330,10 +358,25 @@ def student_login(request):
         request.session.modified = True
         request.session.save()
 
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+
+        access_token = str(
+            refresh.access_token
+        )
+
+        refresh_token = str(
+            refresh
+        )
+
         return no_cache_response({
             "status": "success",
             "message": "Login successful",
             "role": "student",
+
+            "access": access_token,
+            "refresh": refresh_token,
+
             "student": {
                 "student_id": student.get(
                     "student_id",
@@ -352,6 +395,7 @@ def student_login(request):
                     ""
                 )
             },
+
             "user": {
                 "student_id": student.get(
                     "student_id",
@@ -383,7 +427,6 @@ def student_login(request):
             str(e),
             500
         )
-
 
 # =========================================================
 # LOGOUT

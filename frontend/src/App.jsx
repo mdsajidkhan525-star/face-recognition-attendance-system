@@ -2,10 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API_URL = "https://face-recognition-attendance-system-evfu.onrender.com";
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://127.0.0.1:8000";
 const TOTAL_FACE_IMAGES = 20;
 
 axios.defaults.withCredentials = true;
+
+const savedAccessToken = localStorage.getItem("accessToken");
+
+if (savedAccessToken) {
+  axios.defaults.headers.common.Authorization =
+    `Bearer ${savedAccessToken}`;
+}
 
 function App() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -131,6 +140,10 @@ const [passwordChangeError, setPasswordChangeError] = useState("");
     localStorage.removeItem("adminLoggedIn");
     localStorage.removeItem("adminUser");
     localStorage.removeItem("userRole");
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+
+    delete axios.defaults.headers.common.Authorization;
 
     setIsAuthenticated(false);
     setRole(null);
@@ -140,95 +153,117 @@ const [passwordChangeError, setPasswordChangeError] = useState("");
   };
 
   const checkCurrentUser = async () => {
-  const requestId = ++authRequestIdRef.current;
+    const requestId = ++authRequestIdRef.current;
+    const accessToken = localStorage.getItem("accessToken");
 
-  try {
-    const response = await axios.get(
-      `${API_URL}/current-user/`,
-      {
-        withCredentials: true,
+    if (!accessToken) {
+      if (requestId === authRequestIdRef.current) {
+        setAuthChecked(true);
       }
-    );
-
-    if (requestId !== authRequestIdRef.current) {
       return;
     }
 
-    if (response.data.status !== "success") {
-      clearAuthentication();
-      return;
-    }
+    try {
+      axios.defaults.headers.common.Authorization =
+        `Bearer ${accessToken}`;
 
-    const authenticatedRole = response.data.role;
-    const responseUser = response.data.user || {};
+      const response = await axios.get(
+        `${API_URL}/current-user/`,
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
 
-    if (authenticatedRole === "admin") {
-      const adminUser = {
-        role: "admin",
-        username: responseUser.username || "",
-        email: responseUser.email || "",
-        is_staff: responseUser.is_staff === true,
-      };
+      if (requestId !== authRequestIdRef.current) {
+        return;
+      }
 
-      if (!adminUser.is_staff) {
+      if (response.data.status !== "success") {
         clearAuthentication();
         return;
       }
 
-      setIsAuthenticated(true);
-      setRole("admin");
-      setCurrentUser(adminUser);
-      setActivePage("dashboard");
+      const authenticatedRole = response.data.role;
+      const responseUser =
+        response.data.user ||
+        response.data.student ||
+        {};
 
-      localStorage.setItem("userRole", "admin");
-      localStorage.setItem("adminLoggedIn", "true");
-      localStorage.setItem(
-        "adminUser",
-        JSON.stringify(adminUser)
+      if (authenticatedRole === "admin") {
+        const adminUser = {
+          role: "admin",
+          username: responseUser.username || "",
+          email: responseUser.email || "",
+          is_staff: responseUser.is_staff === true,
+        };
+
+        if (!adminUser.is_staff) {
+          clearAuthentication();
+          return;
+        }
+
+        setIsAuthenticated(true);
+        setRole("admin");
+        setCurrentUser(adminUser);
+        setActivePage("dashboard");
+
+        localStorage.setItem("userRole", "admin");
+        localStorage.setItem("adminLoggedIn", "true");
+        localStorage.setItem(
+          "adminUser",
+          JSON.stringify(adminUser)
+        );
+
+        return;
+      }
+
+      if (authenticatedRole === "student") {
+        const studentUser = {
+          role: "student",
+          student_id:
+            responseUser.student_id ||
+            responseUser.username ||
+            "",
+          name: responseUser.name ||
+            responseUser.first_name ||
+            "",
+          email: responseUser.email || "",
+          course: responseUser.course || "",
+        };
+
+        setIsAuthenticated(true);
+        setRole("student");
+        setCurrentUser(studentUser);
+        setActivePage("dashboard");
+
+        localStorage.setItem("userRole", "student");
+        localStorage.removeItem("adminLoggedIn");
+        localStorage.removeItem("adminUser");
+
+        return;
+      }
+
+      clearAuthentication();
+    } catch (error) {
+      if (requestId !== authRequestIdRef.current) {
+        return;
+      }
+
+      console.error(
+        "Authentication check error:",
+        error
       );
 
-      return;
+      clearAuthentication();
+    } finally {
+      if (requestId === authRequestIdRef.current) {
+        setAuthChecked(true);
+      }
     }
-
-    if (authenticatedRole === "student") {
-      const studentUser = {
-        role: "student",
-        student_id: responseUser.student_id || "",
-        name: responseUser.name || "",
-        email: responseUser.email || "",
-        course: responseUser.course || "",
-      };
-
-      setIsAuthenticated(true);
-      setRole("student");
-      setCurrentUser(studentUser);
-      setActivePage("dashboard");
-
-      localStorage.setItem("userRole", "student");
-      localStorage.removeItem("adminLoggedIn");
-      localStorage.removeItem("adminUser");
-
-      return;
-    }
-
-    clearAuthentication();
-  } catch (error) {
-    if (requestId !== authRequestIdRef.current) {
-      return;
-    }
-
-    console.error(
-      "Authentication check error:",
-      error
-    );
-
-    clearAuthentication();
-     } finally {
-    if (requestId === authRequestIdRef.current) {
-      setAuthChecked(true);
-    }
-  }
-};
+  };
   useEffect(() => {
     checkCurrentUser();
 
@@ -297,6 +332,31 @@ const [passwordChangeError, setPasswordChangeError] = useState("");
       return;
     }
 
+    const accessToken = response.data.access;
+    const refreshToken = response.data.refresh;
+
+    if (!accessToken) {
+      setLoginError(
+        "Authentication token was not received."
+      );
+      return;
+    }
+
+    localStorage.setItem(
+      "accessToken",
+      accessToken
+    );
+
+    if (refreshToken) {
+      localStorage.setItem(
+        "refreshToken",
+        refreshToken
+      );
+    }
+
+    axios.defaults.headers.common.Authorization =
+      `Bearer ${accessToken}`;
+
     const authenticatedRole =
       response.data.role || loginRole;
 
@@ -326,17 +386,25 @@ const [passwordChangeError, setPasswordChangeError] = useState("");
     }
 
     if (authenticatedRole === "student") {
+      const studentResponse =
+        response.data.student ||
+        response.data.user ||
+        {};
+
       userData = {
         role: "student",
         student_id:
-          response.data.student?.student_id ||
+          studentResponse.student_id ||
+          studentResponse.username ||
           loginUsername.trim(),
         name:
-          response.data.student?.name || "",
+          studentResponse.name ||
+          studentResponse.first_name ||
+          "",
         email:
-          response.data.student?.email || "",
+          studentResponse.email || "",
         course:
-          response.data.student?.course || "",
+          studentResponse.course || "",
       };
 
       localStorage.removeItem(
@@ -608,31 +676,77 @@ const handleLogout = async () => {
   };
 
   const loadStudentData = async () => {
+    const accessToken = localStorage.getItem("accessToken");
+
+    if (!accessToken) {
+      clearAuthentication();
+      return;
+    }
+
     try {
+      axios.defaults.headers.common.Authorization =
+        `Bearer ${accessToken}`;
+
       const [
         dashboardResponse,
         profileResponse,
         attendanceResponse,
       ] = await Promise.all([
-        axios.get(`${API_URL}/student/dashboard/`),
-        axios.get(`${API_URL}/student/profile/`),
-        axios.get(`${API_URL}/student/attendance/`),
+        axios.get(`${API_URL}/student/dashboard/`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }),
+        axios.get(`${API_URL}/student/profile/`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }),
+        axios.get(`${API_URL}/student/attendance/`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }),
       ]);
 
-      setStudentDashboard(
-        dashboardResponse.data
-      );
+      const dashboardData =
+        dashboardResponse.data || {};
 
-      setStudentProfile(
-        profileResponse.data.student ||
-          dashboardResponse.data.student ||
-          null
-      );
+      const profileData =
+        profileResponse.data?.student ||
+        dashboardData.student ||
+        {};
 
-      setStudentAttendance(
-        attendanceResponse.data.attendance ||
-          []
-      );
+      const attendanceData =
+        attendanceResponse.data?.attendance ||
+        [];
+
+      setStudentDashboard(dashboardData);
+      setStudentProfile(profileData);
+      setStudentAttendance(attendanceData);
+
+      if (Object.keys(profileData).length > 0) {
+        setCurrentUser((previousUser) => ({
+          ...(previousUser || {}),
+          role: "student",
+          student_id:
+            profileData.student_id ||
+            previousUser?.student_id ||
+            "",
+          name:
+            profileData.name ||
+            previousUser?.name ||
+            "",
+          email:
+            profileData.email ||
+            previousUser?.email ||
+            "",
+          course:
+            profileData.course ||
+            previousUser?.course ||
+            "",
+        }));
+      }
     } catch (error) {
       console.error(
         "Error loading student data:",
@@ -644,7 +758,6 @@ const handleLogout = async () => {
       }
     }
   };
-
   useEffect(() => {
     if (!isAuthenticated || !authChecked) {
       return;
@@ -2924,11 +3037,30 @@ if (studentPassword !== studentConfirmPassword) {
     const data =
       studentDashboard || {};
 
-    const student =
-      data.student ||
-      studentProfile ||
-      currentUser?.student ||
-      {};
+    const studentData = {
+      student_id:
+        data.student?.student_id ||
+        studentProfile?.student_id ||
+        currentUser?.student_id ||
+        "",
+      name:
+        data.student?.name ||
+        studentProfile?.name ||
+        currentUser?.name ||
+        "",
+      email:
+        data.student?.email ||
+        studentProfile?.email ||
+        currentUser?.email ||
+        "",
+      course:
+        data.student?.course ||
+        studentProfile?.course ||
+        currentUser?.course ||
+        "",
+    };
+
+    const student = studentData;
 
     const present =
       data.present_today ??
@@ -3284,11 +3416,28 @@ if (studentPassword !== studentConfirmPassword) {
   };
 
   const renderStudentProfile = () => {
-    const student =
-      studentProfile ||
-      studentDashboard?.student ||
-      currentUser?.student ||
-      {};
+    const student = {
+      student_id:
+        studentProfile?.student_id ||
+        studentDashboard?.student?.student_id ||
+        currentUser?.student_id ||
+        "",
+      name:
+        studentProfile?.name ||
+        studentDashboard?.student?.name ||
+        currentUser?.name ||
+        "",
+      email:
+        studentProfile?.email ||
+        studentDashboard?.student?.email ||
+        currentUser?.email ||
+        "",
+      course:
+        studentProfile?.course ||
+        studentDashboard?.student?.course ||
+        currentUser?.course ||
+        "",
+    };
 
     return (
       <>
